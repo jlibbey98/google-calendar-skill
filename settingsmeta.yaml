@@ -20,3 +20,11 @@ skillMetadata:
           type: password
           label: Password
           value: ""
+    - name: Time Zone
+      fields:
+        - type: label
+          label: "The time zone in which you reside; find the name on [this list of time zones](https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568)"
+        - name: timezone
+          type: text
+          label: Time Zone
+          value: ""
