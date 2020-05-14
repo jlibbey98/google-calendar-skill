@@ -37,16 +37,17 @@ class GoogleCalendar(MycroftSkill):
         else:
             self.speak_dialog('today.you.have')
         
-        for event in events:
-            start_full = event['start'].get('dateTime', event['start'].get('date'))
-            start_abbr = start_full[11:16]
+        for event_calendar in events:
+            for event in event_calendar:
+                start_full = event['start'].get('dateTime', event['start'].get('date'))
+                start_abbr = start_full[11:16]
 
-            if start_abbr[3:] == '00':
-                self.speak_dialog('event.is.at.hundred', {"event_summary": 
-                        event['summary'], "event_time_start": start_abbr})
-            else:
-                self.speak_dialog('event.is.at', {"event_summary": event['summary'],
-                    "event_time_start": start_abbr})
+                if start_abbr[3:] == '00':
+                    self.speak_dialog('event.is.at.hundred', {"event_summary": 
+                            event['summary'], "event_time_start": start_abbr})
+                else:
+                    self.speak_dialog('event.is.at', {"event_summary": event['summary'],
+                        "event_time_start": start_abbr})
 
 
     def update_credentials(self):
@@ -88,19 +89,23 @@ class GoogleCalendar(MycroftSkill):
         day_end_str = day_end_dt.isoformat()
 
 #        calendar_list = ['primary', 'Duncan Hall'] 
-        """ 
-        event_list = []
-        for calendar in calendar_list:
-            self.log.info(calendar)
-            event_list.append(self.creds.events().list(calendarId=calendar,
-                timeMin=now_str, timeMax=day_end_str, singleEvents=True,
-                orderBy='startTime').execute())
-        """
-        event_list = self.creds.events().list(calendarId='primary',
+        calendar_list = self.creds.calendarList().list().execute()
+        calendar_id_list = []
+        for calendar in calendar_list['items']:
+           calendar_id_list.append(calendar['id'])
+
+        event_items = []
+        for calendar_id in calendar_id_list:
+            event_list = self.creds.events().list(calendarId=calendar_id,
                 timeMin=now_str, timeMax=day_end_str, singleEvents=True,
                 orderBy='startTime').execute()
-
-        return event_list.get('items', [])
+            event_items.append(event_list.get('items', []))
+        """
+        event_list = self.creds.events().list(calendarId=calId,
+                timeMin=now_str, timeMax=day_end_str, singleEvents=True,
+                orderBy='startTime').execute()
+        """
+        return event_items 
 
 
 
