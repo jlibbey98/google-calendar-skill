@@ -14,25 +14,28 @@ from oauth2client import tools
 
 
 class GoogleCalendar(MycroftSkill):
+
     def __init__(self):
         MycroftSkill.__init__(self)
         self.dep_dir = '/home/pi/custom-dep'
         if not os.path.exists(self.dep_dir):
             os.makedirs(self.dep_dir)
 
-        self.creds = None
+        self.service = None
         self.timezone = None
+        self.enabled_calendars = []
 
     def initialize(self):
         self.update_credentials()
         self.update_timezone()
+        self.update_enabled_calendars()
 
     @intent_file_handler('calendar.google.intent')
     def handle_calendar_google(self, message):
         self.speak_dialog('let.me.check')
 
         event_list = self.get_events()
-        self.log.info(event_list)
+
 
         if event_list:
             self.speak_dialog('today.you.have')
@@ -60,8 +63,8 @@ class GoogleCalendar(MycroftSkill):
 
     def update_credentials(self):
         """
-        Acquires the credentials for the Google Calendar and returns
-        them after authorization and building
+        Acquires the credentials for the Google Calendar and uses them to
+        build the service
         """
       
         credential_path = os.path.join(self.dep_dir, 'calendar_nd.json')
@@ -71,17 +74,21 @@ class GoogleCalendar(MycroftSkill):
 
         http = credentials.authorize(httplib2.Http())
 
-        self.creds =  discovery.build('calendar', 'v3', http=http)
+        self.service =  discovery.build('calendar', 'v3', http=http)
 
 
     def update_timezone(self):
 
-        settings = self.creds.settings().list().execute()
+        settings = self.service.settings().list().execute()
 
         for setting in settings['items']:
             if setting.get('id') == 'timezone':
                 self.timezone = pytz.timezone(setting.get('value'))
                 return
+
+    def update_enabled_calendars(self):
+
+        self.enabled_calendars = self.settings.get('enabled_calendar_list').split(',')
         
 
     def get_events(self):
@@ -97,14 +104,29 @@ class GoogleCalendar(MycroftSkill):
         day_end_str = day_end_dt.isoformat()
 
 
-        calendar_list = self.creds.calendarList().list().execute()
+        calendar_list = self.service.calendarList().list().execute()
         calendar_id_list = []
-        for calendar in calendar_list['items']:
-           calendar_id_list.append(calendar['id'])
+        # if all calendars are enabled, fetch and use all calendars
+        if self.settings.get('enable_all_calendars'):
+            self.log.info('All calendars enabled')
+            for calendar in calendar_list['items']:
+                calendar_id_list.append(calendar['id'])
+        # go through list of enabled calendars
+        else:
+            self.log.info('Enabled calendars are {}'.format(self.enabled_calendars))
+            for calendar in calendar_list['items']:
+                if calendar['summary'] in self.enabled_calendars:
+                    calendar_id_list.append(calendar['id'])
+                    self.log.info('Added {} to calendar list'.format(calendar['id']))
+
+        # if no calendars enabled, default to primary
+        if not calendar_id_list:
+            self.log.info('No recognized calendars; focusing on primary')
+            calendar_id_list.append('primary')
 
         event_items = []
         for calendar_id in calendar_id_list:
-            event_list = self.creds.events().list(calendarId=calendar_id,
+            event_list = self.service.events().list(calendarId=calendar_id,
                     timeMin=now_str, timeMax=day_end_str, singleEvents=True,
                     timeZone=self.timezone).execute()
 
@@ -116,8 +138,6 @@ class GoogleCalendar(MycroftSkill):
         event_items.sort(key = lambda event: event['start']['dateTime'])
 
         return event_items 
-
-
 
 
 

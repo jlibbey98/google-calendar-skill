@@ -1,14 +1,14 @@
 skillMetadata:
     sections:
-        - name: Display
+        - name: Calendars to Enable
           fields:
             - type: label
-              label: List the names of all calendars you would like to have checked, separated by commas. For example, if you have two calendars named Business and Personal, you would input to the field "Business, Personal". If the field is left blank, only the primary calendar will be read. This field is case sensitive.
+              label: List the names of all calendars you would like to have checked, separated by commas. For example, if you have two calendars named Business and Personal, you would input to the field "Business, Personal". If both fields are left blank, only the primary calendar will be read. This field is case sensitive.
             - name: enabled_calendar_list
               type: text
               label: Enabled Calendars
               value: ""
             - name: enable_all_calendars
               type: checkbox
-              label: Display all calendars
+              label: Enable all calendars (overrides above field)
               value: "false"
