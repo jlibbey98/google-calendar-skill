@@ -1,30 +1,14 @@
-
 skillMetadata:
-  sections:
-    - name: Options << Name of section
-      fields:
-        - name: internal_python_variable_name
-          type: text
-          label: Setting Friendly Display Name
-          value: ""
-          placeholder: demo prompt in the input box
-    - name: Login << Name of another section
-      fields:
-        - type: label
-          label: Just a little bit of extra info for the user to understand following settings
-        - name: username
-          type: text
-          label: Username
-          value: ""
-        - name: password
-          type: password
-          label: Password
-          value: ""
-    - name: Time Zone
-      fields:
-        - type: label
-          label: "The time zone in which you reside; find the name on [this list of time zones](https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568)"
-        - name: timezone
-          type: text
-          label: Time Zone
-          value: ""
+    sections:
+        - name: Display
+          fields:
+            - type: label
+              label: List the names of all calendars you would like to have checked, separated by commas. For example, if you have two calendars named Business and Personal, you would input to the field "Business, Personal". If the field is left blank, only the primary calendar will be read. This field is case sensitive.
+            - name: enabled_calendar_list
+              type: text
+              label: Enabled Calendars
+              value: ""
+            - name: enable_all_calendars
+              type: checkbox
+              label: Display all calendars
+              value: "false"

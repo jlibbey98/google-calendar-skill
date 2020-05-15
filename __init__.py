@@ -31,23 +31,31 @@ class GoogleCalendar(MycroftSkill):
     def handle_calendar_google(self, message):
         self.speak_dialog('let.me.check')
 
-        events = self.get_events()
-        if not events:
-            self.speak_dialog('no.events.today')
-        else:
+        event_list = self.get_events()
+        self.log.info(event_list)
+
+        if event_list:
             self.speak_dialog('today.you.have')
-        
-        for event_calendar in events:
-            for event in event_calendar:
-                start_full = event['start'].get('dateTime', event['start'].get('date'))
+            for event in event_list:
+                start_full = event['start'].get('dateTime',
+                                    event['start'].get('date'))
                 start_abbr = start_full[11:16]
 
-                if start_abbr[3:] == '00':
-                    self.speak_dialog('event.is.at.hundred', {"event_summary": 
-                            event['summary'], "event_time_start": start_abbr})
+                if start_abbr[3] == '0':
+                    if start_abbr[4] == '0':
+                        self.speak_dialog('event.is.at.hundred',
+                                {"event_summary": event['summary'],
+                                "event_time_start": start_abbr})
+                    else:
+                        self.speak_dialog('event.is.at.oh',
+                                {"event_summary": event['summary'],
+                                "event_time_start_h": start_abbr[0:2],
+                                "event_time_start_m": start_abbr[4]})
                 else:
-                    self.speak_dialog('event.is.at', {"event_summary": event['summary'],
-                        "event_time_start": start_abbr})
+                    self.speak_dialog('event.is.at', {"event_summary":
+                            event['summary'], "event_time_start": start_abbr})
+        else:
+            self.speak_dialog('no.events.today')
 
 
     def update_credentials(self):
@@ -88,7 +96,7 @@ class GoogleCalendar(MycroftSkill):
         now_str = now_dt.isoformat()
         day_end_str = day_end_dt.isoformat()
 
-#        calendar_list = ['primary', 'Duncan Hall'] 
+
         calendar_list = self.creds.calendarList().list().execute()
         calendar_id_list = []
         for calendar in calendar_list['items']:
@@ -97,15 +105,18 @@ class GoogleCalendar(MycroftSkill):
         event_items = []
         for calendar_id in calendar_id_list:
             event_list = self.creds.events().list(calendarId=calendar_id,
-                timeMin=now_str, timeMax=day_end_str, singleEvents=True,
-                orderBy='startTime').execute()
-            event_items.append(event_list.get('items', []))
-        """
-        event_list = self.creds.events().list(calendarId=calId,
-                timeMin=now_str, timeMax=day_end_str, singleEvents=True,
-                orderBy='startTime').execute()
-        """
+                    timeMin=now_str, timeMax=day_end_str, singleEvents=True,
+                    timeZone=self.timezone).execute()
+
+            for event in event_list['items']:
+                event_items.append(event)
+
+
+        # sort event items by start date and time
+        event_items.sort(key = lambda event: event['start']['dateTime'])
+
         return event_items 
+
 
 
 
