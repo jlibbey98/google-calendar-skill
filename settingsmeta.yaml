@@ -12,3 +12,11 @@ skillMetadata:
               type: checkbox
               label: Enable all calendars (overrides above field)
               value: "false"
+            - type: label
+              label: Enabling all calendars will slow down the processing if you have a large number of calendars.
+        - name: 24-Hour Clock
+          fields:
+            - name: en_24h_clock
+              type: checkbox
+              label: Enable 24-hour clock
+              value: "true"

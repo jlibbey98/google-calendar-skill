@@ -12,7 +12,6 @@ from oauth2client import file
 from oauth2client import tools
 
 
-
 class GoogleCalendar(MycroftSkill):
 
     def __init__(self):
@@ -39,24 +38,61 @@ class GoogleCalendar(MycroftSkill):
 
         if event_list:
             self.speak_dialog('today.you.have')
-            for event in event_list:
-                start_full = event['start'].get('dateTime',
-                                    event['start'].get('date'))
-                start_abbr = start_full[11:16]
+            if self.settings.get('en_24h_clock'):
+                for event in event_list:
+                    start_full = event['start'].get('dateTime')
+                    start_abbr = start_full[11:16]
 
-                if start_abbr[3] == '0':
-                    if start_abbr[4] == '0':
-                        self.speak_dialog('event.is.at.hundred',
+                    if start_abbr[3] == '0':
+                        if start_abbr[4] == '0':
+                            self.speak_dialog('event.is.at.hundred',
                                 {"event_summary": event['summary'],
                                 "event_time_start": start_abbr})
-                    else:
-                        self.speak_dialog('event.is.at.oh',
+                        else:
+                            self.speak_dialog('event.is.at.oh',
                                 {"event_summary": event['summary'],
                                 "event_time_start_h": start_abbr[0:2],
                                 "event_time_start_m": start_abbr[4]})
-                else:
-                    self.speak_dialog('event.is.at', {"event_summary":
+                    else:
+                        self.speak_dialog('event.is.at', {"event_summary":
                             event['summary'], "event_time_start": start_abbr})
+            else:
+                for event in event_list:
+                    start_full = event['start'].get('dateTime')
+                    self.log.info(start_full)
+                    start_hr = int(start_full[11:13])
+                    start_min = int(start_full[14:16])
+                    meridian = 'a.m.'
+
+                    # change to p.m. if the hour is large
+                    if start_hr >= 12:
+                        start_hr -= 12
+                        meridian = 'p.m.'
+
+                    # set '00' to '12'; note that above block sets
+                    # 12 p.m. to 00 p.m.
+                    if start_hr == 0:
+                        start_hr = 12
+
+                    if start_min == 0:
+                        self.speak_dialog('event.is.at.oh.clock.12h',
+                            {"event_summary": event['summary'],
+                            "event_time_start": str(start_hr),
+                            "meridian": meridian})
+                    elif start_min < 10:
+                        self.speak_dialog('event.is.at.oh.12h',
+                            {"event_summary": event['summary'],
+                            "event_time_start_h": str(start_hr),
+                            "event_time_start_m": str(start_min),
+                            "meridian": meridian})
+                    else:
+                        self.speak_dialog('event.is.at.12h',
+                            {"event_summary": event['summary'],
+                            "event_time_start": str(start_hr) + ":"
+                                + str(start_min),
+                            "meridian": meridian})
+                            
+                        
         else:
             self.speak_dialog('no.events.today')
 
@@ -88,7 +124,7 @@ class GoogleCalendar(MycroftSkill):
 
     def update_enabled_calendars(self):
 
-        self.enabled_calendars = self.settings.get('enabled_calendar_list').split(',')
+        self.enabled_calendars = self.settings.get('enabled_calendar_list').split(', ')
         
 
     def get_events(self):
