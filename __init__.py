@@ -11,14 +11,13 @@ from oauth2client import client
 from oauth2client import file
 from oauth2client import tools
 
+CREDENTIAL_TOKEN = 'google_calendar_skill_token.json'
+
 
 class GoogleCalendar(MycroftSkill):
 
     def __init__(self):
         MycroftSkill.__init__(self)
-        self.dep_dir = '/home/pi/custom-dep'
-        if not os.path.exists(self.dep_dir):
-            os.makedirs(self.dep_dir)
 
         self.service = None
         self.timezone = None
@@ -102,11 +101,14 @@ class GoogleCalendar(MycroftSkill):
         Acquires the credentials for the Google Calendar and uses them to
         build the service
         """
-      
-        credential_path = os.path.join(self.dep_dir, 'calendar_nd.json')
-
+        
+        credential_dir = os.path.expanduser('~/.credentials')
+        credential_path = os.path.join(credential_dir, CREDENTIAL_TOKEN)
         store = oauth2client.file.Storage(credential_path)
         credentials = store.get()
+
+        if not credentials or credentials.invalid or credentials == None:
+            self.log.error('Google Calendar Skill Error: Invalid credentials; run get_credentials.py in the skill directory to refresh.')
 
         http = credentials.authorize(httplib2.Http())
 
