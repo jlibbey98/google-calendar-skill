@@ -26,20 +26,23 @@ def main():
         os.makedirs(credential_dir)
         print('Created directory ' + credential_dir)
     token_path = os.path.join(credential_dir, CREDENTIAL_TOKEN)
+    secret_path = os.path.join(credential_dir, CREDENTIAL_SECRET)
 
     # ensure that the token file exists when opening it
     with open(token_path, 'w') as f:
         f.close()
+    print('Allocating ' + token_path + ' for Google Calendar Skill token file.')
+    print(secret_path + ' will be allocated for Google Calendar Skill client secret file.\n')
+    
+
     store = oauth2client.file.Storage(token_path)
     credentials = store.get()
-
     print('Opened Google Calendar Skill token file; follow these steps to set up credentials.')
+
     print('Visit the following URL:')
     print('\n\t' + API_ENABLE_URL + '\n')
     print('Click the blue \"Enable the Google Calendar API\" button. Then, click \"Create\" and the blue \"DOWNLOAD CLIENT CONFIGURATION\" button.')
     secret_json = json.loads(input('Copy the contents of the .json file here: '))
-
-    secret_path = os.path.join(credential_dir, CREDENTIAL_SECRET)
 
     # Write the input .json object to the secret file
     with open(secret_path, 'w') as outfile:
