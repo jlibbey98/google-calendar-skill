@@ -1,4 +1,6 @@
-from mycroft import MycroftSkill, intent_file_handler
+from mycroft import MycroftSkill
+from mycroft import intent_handler
+from adapt.intent import IntentBuilder
 
 import os.path
 import datetime
@@ -28,8 +30,11 @@ class GoogleCalendar(MycroftSkill):
         self.update_timezone()
         self.update_enabled_calendars()
 
-    @intent_file_handler('calendar.google.intent')
-    def handle_calendar_google(self, message):
+    @intent_handler(IntentBuilder('WhatIsToday')
+                    .require('What')
+                    .require('Scheduled')
+                    .require('Today'))
+    def handle_what_is_today(self, message):
         self.speak_dialog('let.me.check')
 
         event_list = self.get_events()
