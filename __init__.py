@@ -46,8 +46,8 @@ class GoogleCalendar(MycroftSkill):
 
     def update_credentials(self):
         """
-        Acquires the credentials for the Google Calendar and uses them to
-        build the service; meant to be executed during initialization
+        Initialization subroutine that acquires the credentials for the
+        Google Calendar and uses them to build the service
         """
         
         # Obtain credentials
@@ -67,106 +67,149 @@ class GoogleCalendar(MycroftSkill):
 
 
     def update_timezone(self):
+        """
+        Initialization subroutine that acquires and stores the timezone
+        from the calendar's settings, which assumes that the desired
+        time zone is the same as that of the calendar.
+        """
 
         settings = self.service.settings().list().execute()
 
+        # Iterates through the settings until it finds 'timezone'
         for setting in settings['items']:
             if setting.get('id') == 'timezone':
                 self.timezone = pytz.timezone(setting.get('value'))
                 return
 
     def update_enabled_calendars(self):
+        """
+        Initialization subroutine takes the list of calendars from the
+        settings and uses the commas to parse into a list of strings
+        that will match the calendar 'summary'
+        """
 
         self.enabled_calendars = self.settings.get('enabled_calendar_list').split(', ')
         
 
     def get_events(self):
         """
-        Accesses a list of the events over the course of the day and returns
-        them in the following format:
+        Accesses a list of today's events
+
+        :return: A list of event objects for today's events
         """
 
+        # Fetch datetimes for today and convert them to strings
         now_dt = datetime.datetime.now(self.timezone)
         day_end_dt = now_dt.replace(hour=23, minute=59, second=59)
 
         now_str = now_dt.isoformat()
         day_end_str = day_end_dt.isoformat()
 
-
+        # Fetch list of all calendars to compare with enabled calendars
         calendar_list = self.service.calendarList().list().execute()
         calendar_id_list = []
-        # if all calendars are enabled, fetch and use all calendars
+
+        # If all calendars are enabled, fetch and use all calendars
         if self.settings.get('enable_all_calendars'):
             self.log.info('All calendars enabled')
             for calendar in calendar_list['items']:
                 calendar_id_list.append(calendar['id'])
-        # go through list of enabled calendars
+        # Go through list of enabled calendars if there is no override
         else:
             self.log.info('Enabled calendars are {}'.format(self.enabled_calendars))
-            for calendar in calendar_list['items']:
-                if calendar['summary'] in self.enabled_calendars:
-                    calendar_id_list.append(calendar['id'])
-                    self.log.info('Added {} to calendar list'.format(calendar['summary']))
+            for calendar in calendar_list.get('items'):
+                if calendar.get('summary') in self.enabled_calendars:
+                    calendar_id_list.append(calendar.get('id'))
 
-        # if no calendars enabled, default to primary
+        # If no calendars are enabled, default to primary
         if not calendar_id_list:
-            self.log.info('No recognized calendars; focusing on primary')
             calendar_id_list.append('primary')
 
         event_items = []
+
+        # Fetch a list of events from each enabled calendar
         for calendar_id in calendar_id_list:
             event_list = self.service.events().list(calendarId=calendar_id,
                     timeMin=now_str, timeMax=day_end_str, singleEvents=True,
                     timeZone=self.timezone).execute()
 
+            # Append events to a master list across all calendars
             for event in event_list['items']:
                 event_items.append(event)
 
 
-        # sort event items by start date and time
+        # Sort event items by start date and time
         event_items.sort(key = lambda event: event['start']['dateTime'])
 
         return event_items 
 
     def speak_24h(self, event_list):
+        """
+        Subroutine to execute dialog for events with a 24-hour clock
+
+        :param event_list: A list of event objects to be spoken by Mycroft
+        """
 
         for event in event_list:
+            # Extract the start time string
             start_full = event['start'].get('dateTime')
-            event_dict = {"event_summary": event['summary'],
+
+            # Use start time string and event 'summary' to create a
+            # dictionary of arguments for the dialog
+            event_dict = {"event_summary": event.get('summary'),
                          "event_start_hr": start_full[11:13],
                          "event_start_min": start_full[14:16],
                          "meridian": ""}
 
+            # If the minute portion starts with zero, override Mycroft
+            # to pronounce appropriate zeros
             if event_dict.get('start_min')[0] == '0':
+                # If two zeros, pronounce 'hundred'
                 if event_dict.get('start_min')[1] == '0':
                     self.speak_dialog('event.is.at.hundred', event_dict)
+                # If only one zero, pronounce 'oh ___'
                 else:
                     self.speak_dialog('event.is.at.oh', event_dict)
+            # If no zeros, read numbers directly
             else:
                 self.speak_dialog('event.is.at', event_dict)
 
     def speak_12h(self, event_list):
+        """
+        Subroutine to execute dialog for events with a 12-hour clock
+
+        :param event_list: A list of event objects to be spoken by Mycroft
+        """
+
         for event in event_list:
+            # Extract the start time string
             start_full = event['start'].get('dateTime')
+
+            # Use start time string and event 'summary' to create a
+            # dictionary of arguments for the dialog
             event_dict = {"event_summary": event['summary'],
                          "event_start_hr": int(start_full[11:13]),
                          "event_start_min": int(start_full[14:16]),
                          "meridian": "a.m."}
                     
-            # change to p.m. if the hour is large
+            # Change to p.m. if the hour is large and set hour
+            # between 1 and 12
             if event_dict.get('event_start_hr') >= 12:
                 event_dict['event_start_hr'] -= 12
                 event_dict['meridian'] = 'p.m.'
 
-            # set '00' to '12'; note that above block sets
-            # 12 p.m. to 00 p.m.
+            # Set '00' to '12'; note that above block sets 12 p.m.
+            # to 00 p.m.
             if event_dict.get('event_start_hr') == 0:
                 event_dict['event_start_hr'] = 12
 
+            # Override Mycroft dialog with 'oh clock' if minute is zero
             if event_dict.get('event_start_min') == 0:
                 self.speak_dialog('event.is.at.oh.clock', event_dict)
+            # Override Mycroft dialog to say 'oh ___' if minute is single digit
             elif event_dict.get('event_start_min') < 10:
                 self.speak_dialog('event.is.at.oh', event_dict)
+            # Otherwise speak numbers normally
             else:
                 self.speak_dialog('event.is.at', event_dict)
 
