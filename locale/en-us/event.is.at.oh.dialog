@@ -1,1 +1,1 @@
-{event_summary} at {event_time_start_h} oh {event_time_start_m}
+{event_summary} at {event_start_hr} oh {event_start_min} {meridian}

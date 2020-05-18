@@ -40,56 +40,44 @@ class GoogleCalendar(MycroftSkill):
             if self.settings.get('en_24h_clock'):
                 for event in event_list:
                     start_full = event['start'].get('dateTime')
-                    start_abbr = start_full[11:16]
+                    event_dict = {"event_summary": event['summary'],
+                                 "event_start_hr": start_full[11:13],
+                                 "event_start_min": start_full[14:16],
+                                 "meridian": ""}
 
-                    if start_abbr[3] == '0':
-                        if start_abbr[4] == '0':
+                    if start_min[0] == '0':
+                        if start_min[1] == '0':
                             self.speak_dialog('event.is.at.hundred',
-                                {"event_summary": event['summary'],
-                                "event_time_start": start_abbr})
+                                            event_dict)
                         else:
-                            self.speak_dialog('event.is.at.oh',
-                                {"event_summary": event['summary'],
-                                "event_time_start_h": start_abbr[0:2],
-                                "event_time_start_m": start_abbr[4]})
+                            self.speak_dialog('event.is.at.oh', event_dict)
                     else:
-                        self.speak_dialog('event.is.at', {"event_summary":
-                            event['summary'], "event_time_start": start_abbr})
+                        self.speak_dialog('event.is.at', event_dict)
             else:
                 for event in event_list:
                     start_full = event['start'].get('dateTime')
-                    self.log.info(start_full)
-                    start_hr = int(start_full[11:13])
-                    start_min = int(start_full[14:16])
-                    meridian = 'a.m.'
-
+                    event_dict = {"event_summary": event['summary'],
+                                 "event_start_hr": int(start_full[11:13]),
+                                 "event_start_min": int(start_full[14:16]),
+                                 "meridian": "a.m."}
+                    
                     # change to p.m. if the hour is large
-                    if start_hr >= 12:
-                        start_hr -= 12
-                        meridian = 'p.m.'
+                    if event_dict.get('start_hr') >= 12:
+                        event_dict['start_hr'] -= 12
+                        event_dict['meridian'] = 'p.m.'
 
                     # set '00' to '12'; note that above block sets
                     # 12 p.m. to 00 p.m.
-                    if start_hr == 0:
-                        start_hr = 12
+                    if event_dict.get('start_hr') == 0:
+                        event_dict['start_hr'] = 12
 
-                    if start_min == 0:
-                        self.speak_dialog('event.is.at.oh.clock.12h',
-                            {"event_summary": event['summary'],
-                            "event_time_start": str(start_hr),
-                            "meridian": meridian})
-                    elif start_min < 10:
-                        self.speak_dialog('event.is.at.oh.12h',
-                            {"event_summary": event['summary'],
-                            "event_time_start_h": str(start_hr),
-                            "event_time_start_m": str(start_min),
-                            "meridian": meridian})
+                    if event_dict.get('start_min') == 0:
+                        self.speak_dialog('event.is.at.oh.clock',
+                                        event_dict)
+                    elif event_dict.get('start_min') < 10:
+                        self.speak_dialog('event.is.at.oh', event_dict)
                     else:
-                        self.speak_dialog('event.is.at.12h',
-                            {"event_summary": event['summary'],
-                            "event_time_start": str(start_hr) + ":"
-                                + str(start_min),
-                            "meridian": meridian})
+                        self.speak_dialog('event.is.at', event_dict)
                             
                         
         else:
