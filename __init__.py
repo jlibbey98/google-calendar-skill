@@ -34,7 +34,6 @@ class GoogleCalendar(MycroftSkill):
 
         event_list = self.get_events()
 
-
         if event_list:
             self.speak_dialog('today.you.have')
             if self.settings.get('en_24h_clock'):
@@ -48,19 +47,22 @@ class GoogleCalendar(MycroftSkill):
     def update_credentials(self):
         """
         Acquires the credentials for the Google Calendar and uses them to
-        build the service
+        build the service; meant to be executed during initialization
         """
         
+        # Obtain credentials
         credential_dir = os.path.expanduser('~/.credentials')
         credential_path = os.path.join(credential_dir, CREDENTIAL_TOKEN)
         store = oauth2client.file.Storage(credential_path)
         credentials = store.get()
 
+        # If credentials are invalid, return error and notify user
         if not credentials or credentials.invalid or credentials == None:
+            self.speak_dialog('credentials.invalid')
             self.log.error('Google Calendar Skill Error: Invalid credentials; run get_credentials.py in the skill directory to refresh.')
 
+        # Authorize and build service from the credentials
         http = credentials.authorize(httplib2.Http())
-
         self.service =  discovery.build('calendar', 'v3', http=http)
 
 
