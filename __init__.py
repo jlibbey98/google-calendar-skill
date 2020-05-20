@@ -37,7 +37,15 @@ class GoogleCalendar(MycroftSkill):
     def handle_what_is_today(self, message):
         self.speak_dialog('let.me.check')
 
-        event_list = self.get_events()
+        # Fetch datetimes for today and convert them to strings
+        now_dt = datetime.datetime.now(self.timezone)
+        day_end_dt = now_dt.replace(hour=23, minute=59, second=59)
+
+        now_str = now_dt.isoformat()
+        day_end_str = day_end_dt.isoformat()
+       
+        # Fetch event list
+        event_list = self.get_events(now_str, day_end_str)
 
         if event_list:
             self.speak_dialog('today.you.have')
@@ -48,6 +56,36 @@ class GoogleCalendar(MycroftSkill):
         else:
             self.speak_dialog('no.events.today')
 
+    @intent_handler(IntentBuilder('WhatIsToday')
+                    .require('What')
+                    .require('Scheduled')
+                    .require('Tomorrow'))
+    def handle_what_is_today(self, message):
+        self.speak_dialog('let.me.check')
+
+        # Fetch datetimes for today and convert them to strings
+        now_dt = datetime.datetime.now(self.timezone)
+
+        tomorrow_start_dt = now_dt.replace(hour=0, minute=0, second=0)
+        tomorrow_end_dt = now_dt.replace(hour=23, minute=59, second=59)
+
+        tomorrow_start_dt = tomorrow_start_dt + datetime.timedelta(days=1)
+        tomorrow_end_dt = tomorrow_end_dt + datetime.timedelta(days=1)
+
+        tomorrow_start_str = tomorrow_start_dt.isoformat()
+        tomorrow_end_str = tomorrow_end_dt.isoformat()
+       
+        # Fetch event list
+        event_list = self.get_events(tomorrow_start_str, tomorrow_end_str)
+
+        if event_list:
+            self.speak_dialog('tomorrow.you.have')
+            if self.settings.get('en_24h_clock'):
+                self.speak_24h(event_list)
+            else:
+                self.speak_12h(event_list)                            
+        else:
+            self.speak_dialog('no.events.tomorrow')
 
     def update_credentials(self):
         """
@@ -96,19 +134,14 @@ class GoogleCalendar(MycroftSkill):
         self.enabled_calendars = self.settings.get('enabled_calendar_list').split(', ')
         
 
-    def get_events(self):
+    def get_events(self, start_time, end_time):
         """
         Accesses a list of today's events
 
+        :param start_time: Beginning of time interval as a string
+        :param end_time: End of time interval as a string
         :return: A list of event objects for today's events
         """
-
-        # Fetch datetimes for today and convert them to strings
-        now_dt = datetime.datetime.now(self.timezone)
-        day_end_dt = now_dt.replace(hour=23, minute=59, second=59)
-
-        now_str = now_dt.isoformat()
-        day_end_str = day_end_dt.isoformat()
 
         # Fetch list of all calendars to compare with enabled calendars
         calendar_list = self.service.calendarList().list().execute()
@@ -135,7 +168,7 @@ class GoogleCalendar(MycroftSkill):
         # Fetch a list of events from each enabled calendar
         for calendar_id in calendar_id_list:
             event_list = self.service.events().list(calendarId=calendar_id,
-                    timeMin=now_str, timeMax=day_end_str, singleEvents=True,
+                    timeMin=start_time, timeMax=end_time, singleEvents=True,
                     timeZone=self.timezone).execute()
 
             # Append events to a master list across all calendars
