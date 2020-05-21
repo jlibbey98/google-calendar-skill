@@ -2,3 +2,5 @@ __pycache__/
 *.qmlc
 settings.json
 
+credentials.json
+calendar.json
